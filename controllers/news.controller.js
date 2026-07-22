@@ -44,14 +44,23 @@ export const getNewsById = async (req, res) => {
 };
 
 // POST /api/news
+// POST /api/news
 export const createNews = async (req, res) => {
   try {
     let thumbnailUrl = "";
     let imageUrls = [];
 
-    // 1. Upload main thumbnail if present
+    // 1. Upload main thumbnail if present in req.files
     if (req.files && req.files.thumbnail && req.files.thumbnail[0]) {
       thumbnailUrl = await uploadToR2(req.files.thumbnail[0]);
+    }
+
+    // Reject request if thumbnail file buffer failed to upload or was missing
+    if (!thumbnailUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Thumbnail image file is required and must be valid.",
+      });
     }
 
     // 2. Upload additional images if present
@@ -65,7 +74,7 @@ export const createNews = async (req, res) => {
     const articleData = {
       ...req.body,
       author: req.user.id,
-      thumbnail: thumbnailUrl || req.body.thumbnail,
+      thumbnail: thumbnailUrl,
       images: imageUrls,
       publishedAt: req.body.status === "Published" ? new Date() : null,
     };
