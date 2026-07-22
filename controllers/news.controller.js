@@ -1,5 +1,4 @@
 import News from "../models/News.js";
-import News from "../models/News.js";
 import { uploadToR2 } from "../config/r2.js";
 
 // Helper utility to structure standard JSON responses
