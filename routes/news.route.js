@@ -12,6 +12,9 @@ router.get("/breaking", newsController.getBreakingNews);
 router.get("/category/:category", newsController.getNewsByCategory);
 router.get("/related/:id", newsController.getRelatedNews);
 
+router.get("/my-submissions", newsController.getMySubmissions);
+
+
 // Global Document Collections
 router.get("/", newsController.getAllNews);
 router.get("/:id", newsController.getNewsById);
