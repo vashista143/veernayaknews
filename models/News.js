@@ -44,7 +44,7 @@ const newsSchema = new mongoose.Schema(
     },
     thumbnail: {
       type: String,
-      required: false,
+      required: true,
     },
     images: [{ type: String }],
     video: {
