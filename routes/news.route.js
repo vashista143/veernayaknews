@@ -19,8 +19,8 @@ router.get("/related/:id", newsController.getRelatedNews);
 router.get("/", newsController.getAllNews);
 router.get("/:id", newsController.getNewsById);
 
-// Content Creation & Modifications (RBAC Protected)
-router.post('/', authMiddleware,authorizeRoles("admin", "reporter"),upload.fields([{ name: 'thumbnail', maxCount: 1 },{ name: 'images', maxCount: 5 }]), newsController.createNews);
+// Content Creation & Modifications (RBAC Protected) authorizeRoles("admin", "reporter")
+router.post('/', authMiddleware,upload.fields([{ name: 'thumbnail', maxCount: 1 },{ name: 'images', maxCount: 5 }]), newsController.createNews);
 router.patch("/:id", authMiddleware, authorizeRoles("admin", "reporter"), newsController.updateNews);
 router.delete("/:id", authMiddleware, authorizeRoles("admin"), newsController.deleteNews);
 
