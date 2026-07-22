@@ -17,6 +17,19 @@ export const getAllNews = async (req, res) => {
   }
 };
 
+export const getMySubmissions = async (req, res) => {
+  try {
+    const userId = req.user.id; // from authMiddleware
+    const submissions = await News.find({ author: userId })
+      .sort({ createdAt: -1 })
+      .select('title thumbnail status createdAt publishedAt rejectionReason');
+
+    return res.status(200).json({ success: true, data: submissions });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // GET /api/news/:id
 export const getNewsById = async (req, res) => {
   try {
