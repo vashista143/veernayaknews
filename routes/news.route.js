@@ -15,6 +15,8 @@ router.get("/breaking", newsController.getBreakingNews);
 router.get("/category/:category", newsController.getNewsByCategory);
 router.get("/related/:id", newsController.getRelatedNews);
 router.get("/my-submissions", authMiddleware, newsController.getMySubmissions);
+router.get("/pending", newsController.getPendingNews);
+
 // Global Document Collections
 router.get("/", newsController.getAllNews);
 router.get("/:id", newsController.getNewsById);
