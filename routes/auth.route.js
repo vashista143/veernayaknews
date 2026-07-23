@@ -22,7 +22,7 @@ router.patch("/update-profile", authMiddleware, authController.updateProfile);
 
 // Example: Admin Only Route
 router.delete("/delete-account", authMiddleware, authorizeRoles("admin"), authController.deleteAccount);
-
+router.post("/logout", authMiddleware, authController.logoutUser);
 // Example: Admin & Reporter Shared Management Route
 // router.get("/reports", authMiddleware, authorizeRoles("admin", "reporter"), reportController.getAll);
 
