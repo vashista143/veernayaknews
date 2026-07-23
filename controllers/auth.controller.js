@@ -76,6 +76,28 @@ export const registerUser = async (req, res) => {
   }
 };
 
+export const getPendingNews = async (req, res) => {
+  try {
+    const articles = await News.find({
+      isDeleted: false,
+      status: "Pending",
+    })
+      .populate("author", "name avatar")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      articles,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+
 // ==============================
 // Login
 // ==============================
