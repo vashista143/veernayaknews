@@ -299,8 +299,12 @@ export const resendVerification = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
-  try { res.status(200).json({ success: true, message: "Current User API" }); } 
-  catch (error) { res.status(500).json({ success: false, message: error.message }); }
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 export const updateProfile = async (req, res) => {
