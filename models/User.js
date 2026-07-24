@@ -38,6 +38,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["user", "admin", "reporter"]
     },
+    savedNews: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "News",
+      },
+    ],
     refreshToken: {
       type: String,
       select: false // Hides it from common queries automatically for safety
