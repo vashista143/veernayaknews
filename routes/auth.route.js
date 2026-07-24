@@ -10,6 +10,9 @@ router.post("/login", authController.login);
 // router.post("/google", authController.googleLogin);
 router.post("/refresh-token", authController.refreshAccessToken);
 
+router.post("/bookmark/:newsId", authMiddleware, authController.toggleBookmark);
+router.get("/saved-news", authMiddleware, authController.getSavedNews);
+
 // // Google Callback Endpoint (Where Google sends the user after authentication)
 // router.get(
 //   "/google/callback", 
