@@ -76,9 +76,6 @@ export const registerUser = async (req, res) => {
   }
 };
 
-
-
-
 // ==============================
 // Login
 // ==============================
@@ -275,6 +272,60 @@ export const refreshAccessToken = async (req, res) => {
       success: false,
       message: "Internal Server Error.",
     });
+  }
+};
+
+// Toggle Bookmark (Add or Remove news ID from User document)
+export const toggleBookmark = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newsId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const isSaved = user.savedNews.some((id) => id.toString() === newsId);
+
+    if (isSaved) {
+      user.savedNews.pull(newsId);
+    } else {
+      user.savedNews.push(newsId);
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: isSaved ? "Removed from bookmarks." : "Saved to bookmarks.",
+      isSaved: !isSaved,
+      savedNews: user.savedNews,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Fetch User's Saved News Articles
+export const getSavedNews = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate({
+      path: "savedNews",
+      match: { isDeleted: false },
+      populate: { path: "author", select: "name avatar" },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    return res.status(200).json({
+      success: true,
+      articles: user.savedNews,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
