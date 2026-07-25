@@ -38,6 +38,10 @@ export const createAdSubmission = async (req, res) => {
       return sendResponse(res, 400, false, "Advertisement banner image is required.");
     }
 
+    // Validate placement slot
+    const validPlacements = ["ad1", "ad2", "ad3"];
+    const finalPlacement = validPlacements.includes(placement) ? placement : "ad1";
+
     const newAd = await Advertise.create({
       user: req.user.id,
       businessName,
@@ -48,7 +52,7 @@ export const createAdSubmission = async (req, res) => {
       description,
       bannerImage: bannerImageUrl,
       targetUrl,
-      placement: placement || "Home Banner",
+      placement: finalPlacement,
       durationDays: Number(durationDays) || 7,
       status: "Pending",
     });
@@ -76,18 +80,26 @@ export const getMyAdSubmissions = async (req, res) => {
   }
 };
 
-// GET /api/advertise/active - Fetch approved ads for public display in app
-// GET /api/advertise/active - Fetch approved ads for public display in app
+// GET /api/advertise/active - Fetch active approved ads (Supports filtering by ?placement=ad1)
 export const getActiveAds = async (req, res) => {
   try {
     const now = new Date();
+    const { placement } = req.query;
 
-    const activeAds = await Advertise.find({
+    const query = {
       status: "Approved",
       isDeleted: false,
-      startDate: { $lte: now }, // Ad has started
-      endDate: { $gte: now },   // Ad duration hasn't expired yet
-    }).select("adTitle bannerImage targetUrl placement");
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    };
+
+    if (placement && ["ad1", "ad2", "ad3"].includes(placement)) {
+      query.placement = placement;
+    }
+
+    const activeAds = await Advertise.find(query).select(
+      "adTitle bannerImage targetUrl placement startDate endDate"
+    );
 
     return res.status(200).json({
       success: true,
@@ -95,7 +107,7 @@ export const getActiveAds = async (req, res) => {
       ads: activeAds,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return sendResponse(res, 500, false, error.message);
   }
 };
 
@@ -119,7 +131,7 @@ export const getAllAdSubmissions = async (req, res) => {
 // PATCH /api/advertise/:id/status - Approve or Reject Ad (Admin)
 export const updateAdStatus = async (req, res) => {
   try {
-    const { status, adminRemarks, startDate } = req.body;
+    const { status, adminRemarks, placement, startDate, endDate } = req.body;
     const { id } = req.params;
 
     if (!["Approved", "Rejected", "Pending", "Expired"].includes(status)) {
@@ -135,9 +147,21 @@ export const updateAdStatus = async (req, res) => {
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
 
     if (status === "Approved") {
+      // Validate & Update placement slot if explicitly chosen by Admin
+      if (placement && ["ad1", "ad2", "ad3"].includes(placement)) {
+        ad.placement = placement;
+      }
+
+      // Use Admin-selected start and end dates from calendar pickers
       const start = startDate ? new Date(startDate) : new Date();
-      const end = new Date(start);
-      end.setDate(end.getDate() + (ad.durationDays || 7));
+      let end;
+
+      if (endDate) {
+        end = new Date(endDate);
+      } else {
+        end = new Date(start);
+        end.setDate(end.getDate() + (ad.durationDays || 7));
+      }
 
       ad.startDate = start;
       ad.endDate = end;
