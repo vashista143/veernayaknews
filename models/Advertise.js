@@ -49,8 +49,8 @@ const advertiseSchema = new mongoose.Schema(
     },
     placement: {
       type: String,
-      enum: ["Home Banner", "Category Page", "Article Bottom", "Popup", "General"],
-      default: "Home Banner",
+      enum: ["ad1", "ad2", "ad3"],
+      default: "ad1",
     },
     durationDays: {
       type: Number,
