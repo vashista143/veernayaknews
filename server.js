@@ -7,7 +7,7 @@ import configurePassport from './config/passport.js';
 import authRoutes from './routes/auth.route.js'; // Added .js extension
 import newsRoutes from "./routes/news.route.js"
 import advertiseRoutes from './routes/advertise.route.js';
-
+import { initAdExpiryCron } from "./utils/adCron.js";
 dotenv.config();
 
 connectDB();
@@ -18,6 +18,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 configurePassport(passport);
+initAdExpiryCron();
+
 app.use(passport.initialize());
 
 app.get('/', (req, res) => {
