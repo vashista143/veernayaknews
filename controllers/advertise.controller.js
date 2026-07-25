@@ -77,16 +77,25 @@ export const getMyAdSubmissions = async (req, res) => {
 };
 
 // GET /api/advertise/active - Fetch approved ads for public display in app
+// GET /api/advertise/active - Fetch approved ads for public display in app
 export const getActiveAds = async (req, res) => {
   try {
+    const now = new Date();
+
     const activeAds = await Advertise.find({
       status: "Approved",
       isDeleted: false,
+      startDate: { $lte: now }, // Ad has started
+      endDate: { $gte: now },   // Ad duration hasn't expired yet
     }).select("adTitle bannerImage targetUrl placement");
 
-    return sendResponse(res, 200, true, "Active advertisements retrieved.", { ads: activeAds });
+    return res.status(200).json({
+      success: true,
+      message: "Active advertisements retrieved.",
+      ads: activeAds,
+    });
   } catch (error) {
-    return sendResponse(res, 500, false, error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
