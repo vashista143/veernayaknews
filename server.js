@@ -6,6 +6,8 @@ import connectDB from './config/db.js';
 import configurePassport from './config/passport.js';
 import authRoutes from './routes/auth.route.js'; // Added .js extension
 import newsRoutes from "./routes/news.route.js"
+import advertiseRoutes from './routes/advertise.route.js';
+
 dotenv.config();
 
 connectDB();
@@ -22,6 +24,7 @@ app.get('/', (req, res) => {
   res.send('API is running securely...');
 });
 
+app.use('/api/advertise', advertiseRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/news', newsRoutes);
 const PORT = process.env.PORT || 5000;
