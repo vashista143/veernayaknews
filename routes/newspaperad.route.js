@@ -7,27 +7,18 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Protected User Endpoints
+// User Endpoint with matching Multer field name
 router.post(
   "/",
   authMiddleware,
-  upload.single("artworkImage"),
+  upload.single("artworkImage"), // <--- Must match formData.append('artworkImage')
   newspaperAdController.createNewspaperAd
 );
+
 router.get("/my-submissions", authMiddleware, newspaperAdController.getMyNewspaperAds);
 
-// Admin Only Endpoints
-router.get(
-  "/all",
-  authMiddleware,
-  authorizeRoles("admin"),
-  newspaperAdController.getAllNewspaperAds
-);
-router.patch(
-  "/:id/status",
-  authMiddleware,
-  authorizeRoles("admin"),
-  newspaperAdController.updateNewspaperAdStatus
-);
+// Admin Endpoints
+router.get("/all", authMiddleware, authorizeRoles("admin"), newspaperAdController.getAllNewspaperAds);
+router.patch("/:id/status", authMiddleware, authorizeRoles("admin"), newspaperAdController.updateNewspaperAdStatus);
 
 export default router;
