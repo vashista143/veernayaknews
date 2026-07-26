@@ -7,11 +7,11 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// User Endpoint with matching Multer field name
+// User Endpoint
 router.post(
   "/",
   authMiddleware,
-  upload.single("artworkImage"), // <--- Must match formData.append('artworkImage')
+  upload.single("artworkImage"), // Matches formData.append('artworkImage', ...)
   newspaperAdController.createNewspaperAd
 );
 
