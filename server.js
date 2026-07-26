@@ -7,6 +7,7 @@ import configurePassport from './config/passport.js';
 import authRoutes from './routes/auth.route.js'; // Added .js extension
 import newsRoutes from "./routes/news.route.js"
 import advertiseRoutes from './routes/advertise.route.js';
+import newspaperadRoutes from "./routes/advertise.route.js"
 import { initAdExpiryCron } from "./utils/adCron.js";
 dotenv.config();
 
