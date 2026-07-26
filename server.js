@@ -4,11 +4,12 @@ import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import connectDB from './config/db.js';
 import configurePassport from './config/passport.js';
-import authRoutes from './routes/auth.route.js'; // Added .js extension
-import newsRoutes from "./routes/news.route.js"
+import authRoutes from './routes/auth.route.js'; 
+import newsRoutes from "./routes/news.route.js";
 import advertiseRoutes from './routes/advertise.route.js';
-import newspaperadRoutes from "./routes/advertise.route.js"
+import newspaperadRoutes from "./routes/newspaperad.route.js"; // ✅ FIXED ROUTE IMPORT
 import { initAdExpiryCron } from "./utils/adCron.js";
+
 dotenv.config();
 
 connectDB();
@@ -30,7 +31,8 @@ app.get('/', (req, res) => {
 app.use('/api/advertise', advertiseRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/news', newsRoutes);
-app.use('/api/newspaper-ad', newspaperadRoutes);
+app.use('/api/newspaper-ad', newspaperadRoutes); // Now cleanly maps to newspaperad.route.js!
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server executing in ${process.env.NODE_ENV} mode on port ${PORT}`);
