@@ -51,6 +51,11 @@ const videoAdSchema = new mongoose.Schema(
       type: Number,
       default: 30,
     },
+    // Defaults to false upon user submission
+    isAd: {
+      type: Boolean,
+      default: false,
+    },
     status: {
       type: String,
       enum: ["Pending", "Approved", "Rejected", "Expired"],
@@ -70,5 +75,6 @@ const videoAdSchema = new mongoose.Schema(
 
 videoAdSchema.index({ user: 1 });
 videoAdSchema.index({ status: 1 });
+videoAdSchema.index({ isAd: 1 });
 
 export default mongoose.model("VideoAd", videoAdSchema);
