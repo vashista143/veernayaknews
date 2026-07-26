@@ -101,6 +101,7 @@ export const getAllVideoAds = async (req, res) => {
 };
 
 // PATCH /api/video-ad/:id/status - Admin status update
+// PATCH /api/video-ad/:id/status - Admin status update
 export const updateVideoAdStatus = async (req, res) => {
   try {
     const { status, adminRemarks } = req.body;
@@ -117,13 +118,6 @@ export const updateVideoAdStatus = async (req, res) => {
 
     ad.status = status;
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
-
-    // Flip isAd flag to true ONLY when approved by admin
-    if (status === "Approved") {
-      ad.isAd = true;
-    } else {
-      ad.isAd = false;
-    }
 
     await ad.save();
 
