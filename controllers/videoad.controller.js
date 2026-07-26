@@ -5,7 +5,7 @@ const sendResponse = (res, statusCode, success, message, data = null) => {
   return res.status(statusCode).json({ success, message, ...data });
 };
 
-// POST /api/video-ad - Create new video ad request
+// POST /api/video-ad - Create new video ad request (defaults to isAd: false)
 export const createVideoAd = async (req, res) => {
   try {
     const {
@@ -26,7 +26,6 @@ export const createVideoAd = async (req, res) => {
 
     let finalVideoUrl = externalVideoUrl || "";
 
-    // If video file was uploaded directly
     if (req.file) {
       finalVideoUrl = await uploadToR2(req.file);
     }
@@ -46,6 +45,7 @@ export const createVideoAd = async (req, res) => {
       targetUrl,
       videoUrl: finalVideoUrl,
       durationSeconds: Number(durationSeconds) || 30,
+      isAd: false, // Default false upon user upload
       status: "Pending",
     });
 
@@ -58,7 +58,22 @@ export const createVideoAd = async (req, res) => {
   }
 };
 
-// GET /api/video-ad/my-submissions - Fetch user's video ads
+// GET /api/video-ad/active - Fetch only approved ads with isAd: true
+export const getActiveVideoAds = async (req, res) => {
+  try {
+    const ads = await VideoAd.find({
+      status: "Approved",
+      isAd: true,
+      isDeleted: false,
+    }).sort({ createdAt: -1 });
+
+    return sendResponse(res, 200, true, "Active video ads retrieved.", { submissions: ads });
+  } catch (error) {
+    return sendResponse(res, 500, false, error.message);
+  }
+};
+
+// GET /api/video-ad/my-submissions
 export const getMyVideoAds = async (req, res) => {
   try {
     const submissions = await VideoAd.find({
@@ -72,7 +87,7 @@ export const getMyVideoAds = async (req, res) => {
   }
 };
 
-// GET /api/video-ad/all - Fetch all video ads (Admin)
+// GET /api/video-ad/all (Admin)
 export const getAllVideoAds = async (req, res) => {
   try {
     const submissions = await VideoAd.find({ isDeleted: false })
@@ -102,6 +117,13 @@ export const updateVideoAdStatus = async (req, res) => {
 
     ad.status = status;
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
+
+    // Flip isAd flag to true ONLY when approved by admin
+    if (status === "Approved") {
+      ad.isAd = true;
+    } else {
+      ad.isAd = false;
+    }
 
     await ad.save();
 
