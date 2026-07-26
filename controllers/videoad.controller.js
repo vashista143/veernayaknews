@@ -132,3 +132,19 @@ export const updateVideoAdStatus = async (req, res) => {
     return sendResponse(res, 500, false, error.message);
   }
 };
+
+// GET /api/video-ad/reels - Fetch all approved videos (both news reels and ads)
+export const getReelsFeed = async (req, res) => {
+  try {
+    const videos = await VideoAd.find({
+      status: "Approved",
+      isDeleted: false,
+    }).sort({ createdAt: -1 });
+
+    return sendResponse(res, 200, true, "Reels feed retrieved successfully.", {
+      videos,
+    });
+  } catch (error) {
+    return sendResponse(res, 500, false, error.message);
+  }
+};
