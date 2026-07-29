@@ -1,36 +1,59 @@
+import fs from 'fs';
 import { Newspaper } from '../models/newspaper.model.js';
-import { processPdfThumbnail } from '../utils/pdfThumbnail.js'; // Utility helper
+import { uploadToR2 } from '../utils/r2.js';
+import { processPdfThumbnail } from '../utils/pdfThumbnail.js';
 
-// Upload / Create Newspaper
 export const createNewspaper = async (req, res) => {
   try {
     const { title, date } = req.body;
-    const pdfFile = req.file; // Assuming Multer handles file upload
+    const pdfFile = req.file;
 
     if (!pdfFile) {
       return res.status(400).json({ message: 'PDF file is required' });
     }
 
-    // Generate thumbnail from first page of PDF
-    const thumbnailUrl = await processPdfThumbnail(pdfFile.path);
+    // 1. Generate local thumbnail image from page 1 of PDF
+    const localThumbnailPath = await processPdfThumbnail(pdfFile.path);
 
+    // 2. Prepare file buffers/objects for Cloudflare R2 upload
+    const pdfUploadResult = await uploadToR2({
+      originalname: pdfFile.originalname,
+      buffer: fs.readFileSync(pdfFile.path),
+      mimetype: pdfFile.mimetype || 'application/pdf',
+    });
+
+    const thumbnailBuffer = fs.readFileSync(localThumbnailPath);
+    const thumbnailUploadResult = await uploadToR2({
+      originalname: `thumb_${Date.now()}.png`,
+      buffer: thumbnailBuffer,
+      mimetype: 'image/png',
+    });
+
+    // 3. Clean up local temporary files
+    if (fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
+    if (fs.existsSync(localThumbnailPath)) fs.unlinkSync(localThumbnailPath);
+
+    // 4. Save R2 public URLs to MongoDB
     const newspaper = await Newspaper.create({
       title,
       date: new Date(date),
-      pdfUrl: pdfFile.path, // or Cloudinary / S3 URL
-      thumbnailUrl: thumbnailUrl,
+      pdfUrl: pdfUploadResult,
+      thumbnailUrl: thumbnailUploadResult,
     });
 
-    res.status(201).json({ success: true, data: newspaper });
+    return res.status(201).json({ success: true, data: newspaper });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
-// Fetch Newspaper by Selected Date
 export const getNewspaperByDate = async (req, res) => {
   try {
-    const { date } = req.query; // Expecting ISO string or YYYY-MM-DD
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ message: 'Date parameter is required' });
+    }
+
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -42,11 +65,11 @@ export const getNewspaperByDate = async (req, res) => {
     });
 
     if (!newspaper) {
-      return res.status(404).json({ message: 'No newspaper found for this date' });
+      return res.status(404).json({ success: false, message: 'No newspaper found for this date' });
     }
 
-    res.status(200).json({ success: true, data: newspaper });
+    return res.status(200).json({ success: true, data: newspaper });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
