@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { Newspaper } from '../models/newspaper.model.js';
-import { uploadToR2 } from '../config/r2.js';
+import { uploadToR2 } from '../utils/r2.js';
 import { processPdfThumbnail } from '../utils/pdfThumbnail.js';
 
 export const createNewspaper = async (req, res) => {
@@ -12,10 +12,8 @@ export const createNewspaper = async (req, res) => {
       return res.status(400).json({ message: 'PDF file is required' });
     }
 
-    // 1. Generate local thumbnail image from page 1 of PDF
     const localThumbnailPath = await processPdfThumbnail(pdfFile.path);
 
-    // 2. Prepare file buffers/objects for Cloudflare R2 upload
     const pdfUploadResult = await uploadToR2({
       originalname: pdfFile.originalname,
       buffer: fs.readFileSync(pdfFile.path),
@@ -29,13 +27,11 @@ export const createNewspaper = async (req, res) => {
       mimetype: 'image/png',
     });
 
-    // 3. Clean up local temporary files
     if (fs.existsSync(pdfFile.path)) fs.unlinkSync(pdfFile.path);
     if (fs.existsSync(localThumbnailPath)) fs.unlinkSync(localThumbnailPath);
 
-    // 4. Save R2 public URLs to MongoDB
     const newspaper = await Newspaper.create({
-      title,
+      title: title || `Newspaper - ${new Date(date).toLocaleDateString()}`,
       date: new Date(date),
       pdfUrl: pdfUploadResult,
       thumbnailUrl: thumbnailUploadResult,
@@ -60,15 +56,16 @@ export const getNewspaperByDate = async (req, res) => {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const newspaper = await Newspaper.findOne({
+    // Fetch all newspapers for the date ordered by newest upload
+    const newspapers = await Newspaper.find({
       date: { $gte: startOfDay, $lte: endOfDay },
-    });
+    }).sort({ createdAt: -1 });
 
-    if (!newspaper) {
-      return res.status(404).json({ success: false, message: 'No newspaper found for this date' });
+    if (!newspapers || newspapers.length === 0) {
+      return res.status(404).json({ success: false, message: 'No newspapers found for this date' });
     }
 
-    return res.status(200).json({ success: true, data: newspaper });
+    return res.status(200).json({ success: true, data: newspapers });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
