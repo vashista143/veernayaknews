@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { Newspaper } from '../models/newspaper.model.js';
-import { uploadToR2 } from '../utils/r2.js';
+import { uploadToR2 } from '../config/r2.js';
 import { processPdfThumbnail } from '../utils/pdfThumbnail.js';
 
 export const createNewspaper = async (req, res) => {
