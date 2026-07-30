@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg',
+      default: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTl5__LGYg7R1FJvAk2hPQvtGwlSCg9ICtcF2C8g-BRUw&s=10',
     },
     googleId: {
       type: String,
