@@ -31,7 +31,7 @@ const newspaperAdSchema = new mongoose.Schema(
     adType: {
       type: String,
       enum: ["Classified Text", "Classified Display", "Display Ad"],
-      default: "Classified Text",
+      default: "Display Ad",
     },
     editionRegion: {
       type: String,
@@ -47,9 +47,40 @@ const newspaperAdSchema = new mongoose.Schema(
       required: [true, "Ad content text is required"],
       trim: true,
     },
+    placement: {
+      type: String,
+      required: [true, "Ad placement selection is required"],
+      enum: [
+        "fp_full",
+        "fp_half",
+        "fp_quarter",
+        "fp_2col",
+        "fp_custom",
+        "lp_full",
+        "lp_half",
+        "lp_quarter",
+      ],
+    },
+    customCm: {
+      type: Number,
+      default: 0,
+    },
+    totalAmount: {
+      type: Number,
+      required: [true, "Total calculated amount is required"],
+    },
     artworkImage: {
       type: String,
-      default: "", // Required for Display ads, optional for text
+      required: [true, "Artwork image is required"],
+    },
+    paymentReceipt: {
+      type: String,
+      required: [true, "Payment verification proof receipt is required"],
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending Verification", "Verified", "Failed"],
+      default: "Pending Verification",
     },
     status: {
       type: String,
