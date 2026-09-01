@@ -31,6 +31,6 @@ export const uploadToR2 = async ({ originalname = "file.pdf", buffer, mimetype =
   await r2Client.send(command);
 
   // 2. Return clean public URL
-  const publicDomain = process.env.R2_PUBLIC_DOMAIN || "";
+  const publicDomain = process.env.R2_PUBLIC_URL || "";
   return `${publicDomain.replace(/\/$/, "")}/${fileKey}`;
 };
