@@ -7,11 +7,17 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// User Endpoint
+// Multi-file upload configuration for Artwork & Payment Proof
+const uploadAdFiles = upload.fields([
+  { name: "artworkImage", maxCount: 1 },
+  { name: "paymentReceipt", maxCount: 1 },
+]);
+
+// User Endpoints
 router.post(
   "/",
   authMiddleware,
-  upload.single("artworkImage"), // Matches formData.append('artworkImage', ...)
+  uploadAdFiles,
   newspaperAdController.createNewspaperAd
 );
 
