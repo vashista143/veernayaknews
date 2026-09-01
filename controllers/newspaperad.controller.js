@@ -17,34 +17,69 @@ export const createNewspaperAd = async (req, res) => {
       editionRegion,
       publishDate,
       adContent,
+      placement,
+      customCm,
+      totalAmount,
     } = req.body;
 
-    if (!businessName || !contactName || !email || !phone || !editionRegion || !publishDate || !adContent) {
+    if (
+      !businessName ||
+      !contactName ||
+      !email ||
+      !phone ||
+      !editionRegion ||
+      !publishDate ||
+      !adContent ||
+      !placement ||
+      totalAmount === undefined
+    ) {
       return sendResponse(res, 400, false, "Please fill in all required fields.");
     }
 
-    let artworkImageUrl = "";
-    if (req.file) {
-      artworkImageUrl = await uploadToR2(req.file);
+    // Validate files
+    const artworkFile = req.files?.artworkImage?.[0];
+    const receiptFile = req.files?.paymentReceipt?.[0];
+
+    if (!artworkFile) {
+      return sendResponse(res, 400, false, "Artwork / layout image is required.");
     }
+
+    if (!receiptFile) {
+      return sendResponse(res, 400, false, "Payment proof receipt image is required.");
+    }
+
+    // Upload both assets to Cloudflare R2
+    const [artworkImageUrl, paymentReceiptUrl] = await Promise.all([
+      uploadToR2(artworkFile),
+      uploadToR2(receiptFile),
+    ]);
 
     const newAd = await NewspaperAd.create({
       user: req.user.id,
-      businessName,
-      contactName,
-      email,
-      phone,
-      adType: adType || "Classified Text",
-      editionRegion,
+      businessName: businessName.trim(),
+      contactName: contactName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      adType: adType || "Display Ad",
+      editionRegion: editionRegion.trim(),
       publishDate: new Date(publishDate),
-      adContent,
+      adContent: adContent.trim(),
+      placement,
+      customCm: Number(customCm) || 0,
+      totalAmount: Number(totalAmount),
       artworkImage: artworkImageUrl,
+      paymentReceipt: paymentReceiptUrl,
+      paymentStatus: "Pending Verification",
       status: "Pending",
     });
 
-    return sendResponse(res, 201, true, "Newspaper advertisement request submitted successfully.", {
-      ad: newAd,
-    });
+    return sendResponse(
+      res,
+      201,
+      true,
+      "Newspaper advertisement and payment verification submitted successfully.",
+      { ad: newAd }
+    );
   } catch (error) {
     console.error("Create Newspaper Ad Error:", error);
     return sendResponse(res, 500, false, error.message);
@@ -81,11 +116,15 @@ export const getAllNewspaperAds = async (req, res) => {
 // PATCH /api/newspaper-ad/:id/status - Update Status (Admin)
 export const updateNewspaperAdStatus = async (req, res) => {
   try {
-    const { status, adminRemarks } = req.body;
+    const { status, paymentStatus, adminRemarks } = req.body;
     const { id } = req.params;
 
-    if (!["Approved", "Rejected", "Pending", "Published"].includes(status)) {
-      return sendResponse(res, 400, false, "Invalid status value.");
+    if (status && !["Approved", "Rejected", "Pending", "Published"].includes(status)) {
+      return sendResponse(res, 400, false, "Invalid ad status value.");
+    }
+
+    if (paymentStatus && !["Pending Verification", "Verified", "Failed"].includes(paymentStatus)) {
+      return sendResponse(res, 400, false, "Invalid payment status value.");
     }
 
     const ad = await NewspaperAd.findById(id);
@@ -93,12 +132,13 @@ export const updateNewspaperAdStatus = async (req, res) => {
       return sendResponse(res, 404, false, "Newspaper advertisement request not found.");
     }
 
-    ad.status = status;
+    if (status) ad.status = status;
+    if (paymentStatus) ad.paymentStatus = paymentStatus;
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
 
     await ad.save();
 
-    return sendResponse(res, 200, true, `Newspaper ad status updated to ${status}.`, { ad });
+    return sendResponse(res, 200, true, `Newspaper ad updated successfully.`, { ad });
   } catch (error) {
     return sendResponse(res, 500, false, error.message);
   }
