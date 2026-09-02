@@ -1,16 +1,21 @@
 import Advertise from "../models/Advertise.js";
 import { uploadToR2 } from "../config/r2.js";
 
-// Helper utility for uniform JSON response structure
 const sendResponse = (res, statusCode, success, message, data = null) => {
   return res.status(statusCode).json({ success, message, ...data });
+};
+
+const SLOT_PRICES = {
+  ad1: 4000,
+  ad2: 2000,
+  ad3: 1000,
 };
 
 // ==========================================
 // USER ENDPOINTS
 // ==========================================
 
-// POST /api/advertise - Submit a new Advertisement request
+// POST /api/advertise - Submit a new In-App Advertisement request
 export const createAdSubmission = async (req, res) => {
   try {
     const {
@@ -22,38 +27,59 @@ export const createAdSubmission = async (req, res) => {
       description,
       targetUrl,
       placement,
-      durationDays,
+      totalAmount,
     } = req.body;
 
     if (!businessName || !contactName || !email || !phone || !adTitle) {
       return sendResponse(res, 400, false, "Please fill in all required fields.");
     }
 
-    let bannerImageUrl = "";
-    if (req.file) {
-      bannerImageUrl = await uploadToR2(req.file);
+    // Validate uploaded files from Multer fields
+    const bannerFile = req.files?.bannerImage?.[0];
+    const receiptFile = req.files?.paymentReceipt?.[0];
+
+    if (!bannerFile) {
+      return sendResponse(res, 400, false, "Advertisement banner image is required.");
     }
 
-    if (!bannerImageUrl) {
-      return sendResponse(res, 400, false, "Advertisement banner image is required.");
+    if (!receiptFile) {
+      return sendResponse(res, 400, false, "Payment proof receipt screenshot is required.");
     }
 
     // Validate placement slot
     const validPlacements = ["ad1", "ad2", "ad3"];
     const finalPlacement = validPlacements.includes(placement) ? placement : "ad1";
+    const finalAmount = Number(totalAmount) || SLOT_PRICES[finalPlacement] || 4000;
+
+    // Upload both banner and payment proof to Cloudflare R2
+    const [bannerImageUrl, paymentReceiptUrl] = await Promise.all([
+      uploadToR2({
+        originalname: bannerFile.originalname,
+        buffer: bannerFile.buffer,
+        mimetype: bannerFile.mimetype,
+      }),
+      uploadToR2({
+        originalname: receiptFile.originalname,
+        buffer: receiptFile.buffer,
+        mimetype: receiptFile.mimetype,
+      }),
+    ]);
 
     const newAd = await Advertise.create({
       user: req.user.id,
-      businessName,
-      contactName,
-      email,
-      phone,
-      adTitle,
-      description,
-      bannerImage: bannerImageUrl,
-      targetUrl,
+      businessName: businessName.trim(),
+      contactName: contactName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      adTitle: adTitle.trim(),
+      description: (description || "").trim(),
+      targetUrl: (targetUrl || "").trim(),
       placement: finalPlacement,
-      durationDays: Number(durationDays) || 7,
+      durationDays: 7, // Fixed 7 days validity
+      totalAmount: finalAmount,
+      bannerImage: bannerImageUrl,
+      paymentReceipt: paymentReceiptUrl,
+      paymentStatus: "Pending Verification",
       status: "Pending",
     });
 
@@ -80,7 +106,7 @@ export const getMyAdSubmissions = async (req, res) => {
   }
 };
 
-// GET /api/advertise/active - Fetch active approved ads (Supports filtering by ?placement=ad1)
+// GET /api/advertise/active - Fetch active approved ads
 export const getActiveAds = async (req, res) => {
   try {
     const now = new Date();
@@ -131,11 +157,15 @@ export const getAllAdSubmissions = async (req, res) => {
 // PATCH /api/advertise/:id/status - Approve or Reject Ad (Admin)
 export const updateAdStatus = async (req, res) => {
   try {
-    const { status, adminRemarks, placement, startDate, endDate } = req.body;
+    const { status, paymentStatus, adminRemarks, placement, startDate, endDate } = req.body;
     const { id } = req.params;
 
-    if (!["Approved", "Rejected", "Pending", "Expired"].includes(status)) {
+    if (status && !["Approved", "Rejected", "Pending", "Expired"].includes(status)) {
       return sendResponse(res, 400, false, "Invalid status value.");
+    }
+
+    if (paymentStatus && !["Pending Verification", "Verified", "Failed"].includes(paymentStatus)) {
+      return sendResponse(res, 400, false, "Invalid payment status value.");
     }
 
     const ad = await Advertise.findById(id);
@@ -143,16 +173,22 @@ export const updateAdStatus = async (req, res) => {
       return sendResponse(res, 404, false, "Advertisement request not found.");
     }
 
-    ad.status = status;
+    if (status) ad.status = status;
+    if (paymentStatus) {
+      ad.paymentStatus = paymentStatus;
+    } else if (status === "Approved") {
+      ad.paymentStatus = "Verified";
+    } else if (status === "Rejected") {
+      ad.paymentStatus = "Failed";
+    }
+
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
 
     if (status === "Approved") {
-      // Validate & Update placement slot if explicitly chosen by Admin
       if (placement && ["ad1", "ad2", "ad3"].includes(placement)) {
         ad.placement = placement;
       }
 
-      // Use Admin-selected start and end dates from calendar pickers
       const start = startDate ? new Date(startDate) : new Date();
       let end;
 
@@ -160,7 +196,7 @@ export const updateAdStatus = async (req, res) => {
         end = new Date(endDate);
       } else {
         end = new Date(start);
-        end.setDate(end.getDate() + (ad.durationDays || 7));
+        end.setDate(end.getDate() + 7); // Default 7 days
       }
 
       ad.startDate = start;
@@ -169,7 +205,7 @@ export const updateAdStatus = async (req, res) => {
 
     await ad.save();
 
-    return sendResponse(res, 200, true, `Advertisement status updated to ${status}.`, { ad });
+    return sendResponse(res, 200, true, `Advertisement status updated to ${ad.status}.`, { ad });
   } catch (error) {
     return sendResponse(res, 500, false, error.message);
   }
