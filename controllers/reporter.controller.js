@@ -1,6 +1,74 @@
 import User from '../models/User.js';
 import { uploadToR2 } from '../config/r2.js';
 
+export const getAllReporterApplications = async (req, res) => {
+  try {
+    const reporters = await User.find({
+      $or: [{ role: 'reporter' }, { reporterStatus: { $in: ['Pending', 'Approved', 'Rejected'] } }],
+    })
+      .select('-password')
+      .sort({ updatedAt: -1 });
+
+    return res.status(200).json({ success: true, reporters });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PATCH /api/reporter/admin/:id/status - Approve or Reject an application (Admin)
+export const updateReporterApplicationStatus = async (req, res) => {
+  try {
+    const { status, adminRemarks } = req.body;
+    const { id } = req.params;
+
+    if (!['Approved', 'Rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.reporterStatus = status;
+    if (status === 'Approved') {
+      user.role = 'reporter';
+    } else {
+      user.role = 'user';
+    }
+
+    if (adminRemarks !== undefined) {
+      if (!user.reporterDetails) user.reporterDetails = {};
+      user.reporterDetails.adminRemarks = adminRemarks;
+    }
+
+    await user.save();
+    return res.status(200).json({ success: true, message: `Application ${status.toLowerCase()} successfully.`, user });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// PATCH /api/reporter/admin/:id/revoke - Revoke reporter access back to regular user (Admin)
+export const revokeReporterAccess = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.role = 'user';
+    user.reporterStatus = 'None';
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'Reporter access revoked successfully.', user });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // POST /api/reporter/apply - Submit reporter application
 export const applyForReporter = async (req, res) => {
   try {
