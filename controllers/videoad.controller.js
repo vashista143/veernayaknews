@@ -5,7 +5,7 @@ const sendResponse = (res, statusCode, success, message, data = null) => {
   return res.status(statusCode).json({ success, message, ...data });
 };
 
-// POST /api/video-ad - Create new video ad request (defaults to isAd: false)
+// POST /api/video-ad - Create new video ad request with payment verification
 export const createVideoAd = async (req, res) => {
   try {
     const {
@@ -18,34 +18,57 @@ export const createVideoAd = async (req, res) => {
       targetUrl,
       videoUrl: externalVideoUrl,
       durationSeconds,
+      totalAmount,
     } = req.body;
 
     if (!businessName || !contactName || !email || !phone || !adTitle) {
       return sendResponse(res, 400, false, "Please fill in all required fields.");
     }
 
-    let finalVideoUrl = externalVideoUrl || "";
+    // Extract files from Multer upload.fields()
+    const videoFile = req.files?.videoFile?.[0];
+    const receiptFile = req.files?.paymentReceipt?.[0];
 
-    if (req.file) {
-      finalVideoUrl = await uploadToR2(req.file);
+    if (!receiptFile) {
+      return sendResponse(res, 400, false, "Payment proof receipt is required.");
+    }
+
+    let finalVideoUrl = (externalVideoUrl || "").trim();
+
+    if (videoFile) {
+      finalVideoUrl = await uploadToR2({
+        originalname: videoFile.originalname,
+        buffer: videoFile.buffer,
+        mimetype: videoFile.mimetype,
+      });
     }
 
     if (!finalVideoUrl) {
       return sendResponse(res, 400, false, "Please upload a video file or provide a video link.");
     }
 
+    // Upload Payment Receipt Screenshot
+    const paymentReceiptUrl = await uploadToR2({
+      originalname: receiptFile.originalname,
+      buffer: receiptFile.buffer,
+      mimetype: receiptFile.mimetype,
+    });
+
     const newAd = await VideoAd.create({
       user: req.user.id,
-      businessName,
-      contactName,
-      email,
-      phone,
-      adTitle,
-      description,
-      targetUrl,
+      businessName: businessName.trim(),
+      contactName: contactName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      adTitle: adTitle.trim(),
+      description: (description || "").trim(),
+      targetUrl: (targetUrl || "").trim(),
       videoUrl: finalVideoUrl,
+      totalAmount: Number(totalAmount) || 3000,
+      paymentReceipt: paymentReceiptUrl,
+      paymentStatus: "Pending Verification",
       durationSeconds: Number(durationSeconds) || 30,
-      isAd: false, // Default false upon user upload
+      isAd: false,
       status: "Pending",
     });
 
@@ -100,15 +123,18 @@ export const getAllVideoAds = async (req, res) => {
   }
 };
 
-// PATCH /api/video-ad/:id/status - Admin status update
-// PATCH /api/video-ad/:id/status - Admin status update
+// PATCH /api/video-ad/:id/status - Admin status & payment verification update
 export const updateVideoAdStatus = async (req, res) => {
   try {
-    const { status, adminRemarks } = req.body;
+    const { status, paymentStatus, isAd, adminRemarks } = req.body;
     const { id } = req.params;
 
-    if (!["Approved", "Rejected", "Pending", "Expired"].includes(status)) {
+    if (status && !["Approved", "Rejected", "Pending", "Expired"].includes(status)) {
       return sendResponse(res, 400, false, "Invalid status value.");
+    }
+
+    if (paymentStatus && !["Pending Verification", "Verified", "Failed"].includes(paymentStatus)) {
+      return sendResponse(res, 400, false, "Invalid payment status value.");
     }
 
     const ad = await VideoAd.findById(id);
@@ -116,18 +142,27 @@ export const updateVideoAdStatus = async (req, res) => {
       return sendResponse(res, 404, false, "Video advertisement request not found.");
     }
 
-    ad.status = status;
+    if (status) ad.status = status;
+    if (paymentStatus) {
+      ad.paymentStatus = paymentStatus;
+    } else if (status === "Approved") {
+      ad.paymentStatus = "Verified";
+    } else if (status === "Rejected") {
+      ad.paymentStatus = "Failed";
+    }
+
+    if (typeof isAd === "boolean") ad.isAd = isAd;
     if (adminRemarks !== undefined) ad.adminRemarks = adminRemarks;
 
     await ad.save();
 
-    return sendResponse(res, 200, true, `Video ad status updated to ${status}.`, { ad });
+    return sendResponse(res, 200, true, `Video ad status updated to ${ad.status}.`, { ad });
   } catch (error) {
     return sendResponse(res, 500, false, error.message);
   }
 };
 
-// GET /api/video-ad/reels - Fetch all approved videos (both news reels and ads)
+// GET /api/video-ad/reels - Fetch all approved videos
 export const getReelsFeed = async (req, res) => {
   try {
     const videos = await VideoAd.find({
