@@ -57,6 +57,19 @@ const advertiseSchema = new mongoose.Schema(
       required: true,
       default: 7,
     },
+    totalAmount: {
+      type: Number,
+      required: [true, "Total calculated amount is required"],
+    },
+    paymentReceipt: {
+      type: String,
+      required: [true, "Payment verification proof receipt is required"],
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending Verification", "Verified", "Failed"],
+      default: "Pending Verification",
+    },
     startDate: {
       type: Date,
     },
