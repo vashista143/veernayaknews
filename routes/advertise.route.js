@@ -7,14 +7,20 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Public Endpoint (Active approved ads for home/category banners)
+// Multi-file configuration for In-App Banner and Payment Proof
+const uploadInAppFiles = upload.fields([
+  { name: "bannerImage", maxCount: 1 },
+  { name: "paymentReceipt", maxCount: 1 },
+]);
+
+// Public Endpoint
 router.get("/active", advertiseController.getActiveAds);
 
 // Protected User Endpoints
 router.post(
   "/",
   authMiddleware,
-  upload.single("bannerImage"),
+  uploadInAppFiles,
   advertiseController.createAdSubmission
 );
 router.get("/my-submissions", authMiddleware, advertiseController.getMyAdSubmissions);
