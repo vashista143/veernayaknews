@@ -11,6 +11,7 @@ import advertiseRoutes from './routes/advertise.route.js';
 import newspaperadRoutes from "./routes/newspaperad.route.js"; 
 import videoAdRoutes from "./routes/videoad.route.js";
 import newspaperRoutes from "./routes/newspaper.route.js";
+import reporterRoutes from "./routes/reporter.route.js"; // <--- Added reporter route import
 import { initAdExpiryCron } from "./utils/adCron.js";
 
 dotenv.config();
@@ -38,7 +39,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/newspaper-ad', newspaperadRoutes);
 app.use('/api/video-ad', videoAdRoutes);
-app.use('/api/newspaper', newspaperRoutes); 
+app.use('/api/newspaper', newspaperRoutes);
+app.use('/api/reporter', reporterRoutes); // <--- Mounted reporter endpoint
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
