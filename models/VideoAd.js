@@ -47,6 +47,19 @@ const videoAdSchema = new mongoose.Schema(
       type: String,
       required: [true, "Promotional video file or link is required"],
     },
+    totalAmount: {
+      type: Number,
+      default: 3000,
+    },
+    paymentReceipt: {
+      type: String,
+      required: [true, "Payment proof receipt is required"],
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["Pending Verification", "Verified", "Failed"],
+      default: "Pending Verification",
+    },
     durationSeconds: {
       type: Number,
       default: 30,
