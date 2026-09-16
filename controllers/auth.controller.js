@@ -372,6 +372,26 @@ export const changePassword = async (req, res) => {
 };
 
 export const deleteAccount = async (req, res) => {
-  try { res.status(200).json({ success: true, message: "Account Deleted Successfully" }); } 
-  catch (error) { res.status(500).json({ success: false, message: error.message }); }
+  try {
+    const userId = req.user.id;
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User account not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete Account Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete account.",
+    });
+  }
 };
